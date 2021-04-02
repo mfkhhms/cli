@@ -7,13 +7,13 @@ import (
 	"strings"
 
 	"github.com/MakeNowJust/heredoc"
+	"github.com/alecthomas/chroma/quick"
 	"github.com/cli/cli/api"
 	"github.com/cli/cli/internal/ghrepo"
 	runShared "github.com/cli/cli/pkg/cmd/run/shared"
 	"github.com/cli/cli/pkg/cmd/workflow/shared"
 	"github.com/cli/cli/pkg/cmdutil"
 	"github.com/cli/cli/pkg/iostreams"
-	"github.com/cli/cli/pkg/markdown"
 	"github.com/cli/cli/utils"
 	"github.com/spf13/cobra"
 )
@@ -155,8 +155,6 @@ func viewWorkflowContent(opts *ViewOptions, client *api.Client, workflow *shared
 		return fmt.Errorf("could not get workflow file content: %w", err)
 	}
 
-	theme := opts.IO.DetectTerminalTheme()
-	markdownStyle := markdown.GetStyle(theme)
 	if err := opts.IO.StartPager(); err != nil {
 		fmt.Fprintf(opts.IO.ErrOut, "starting pager failed: %v\n", err)
 	}
@@ -168,19 +166,9 @@ func viewWorkflowContent(opts *ViewOptions, client *api.Client, workflow *shared
 
 		fileName := workflow.Base()
 		fmt.Fprintf(out, "%s - %s\n", cs.Bold(workflow.Name), cs.Gray(fileName))
-		fmt.Fprintf(out, "ID: %s", cs.Cyanf("%d", workflow.ID))
+		fmt.Fprintf(out, "ID: %s\n\n", cs.Cyanf("%d", workflow.ID))
 
-		codeBlock := fmt.Sprintf("```yaml\n%s\n```", yaml)
-		rendered, err := markdown.RenderWithOpts(codeBlock, markdownStyle,
-			markdown.RenderOpts{
-				markdown.WithoutIndentation(),
-				markdown.WithoutWrap(),
-			})
-		if err != nil {
-			return err
-		}
-		_, err = fmt.Fprint(opts.IO.Out, rendered)
-		return err
+		return quick.Highlight(out, yaml, "yaml", "terminal256", "friendly")
 	}
 
 	if _, err := fmt.Fprint(opts.IO.Out, yaml); err != nil {
